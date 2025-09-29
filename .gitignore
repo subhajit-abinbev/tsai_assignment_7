@@ -205,3 +205,67 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# PyTorch/ML specific
+# Dataset directories
+data/
+dataset/
+datasets/
+
+# Model checkpoints and saved models
+*.pth
+*.pt
+*.pkl
+*.h5
+*.hdf5
+checkpoints/
+models/
+saved_models/
+
+# Training outputs
+output/
+outputs/
+results/
+logs/
+tensorboard_logs/
+wandb/
+mlruns/
+
+# Generated plots and visualizations
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+!README_images/
+!docs/images/
+
+# Jupyter Notebook outputs (keep source, ignore outputs)
+*.ipynb_checkpoints/
+
+# CUDA cache
+.nv/
+
+# VS Code specific for this project
+.vscode/settings.json
+.vscode/launch.json
+
+# Temporary test files
+test_*.png
+demo_*.png
+*_test.py
+validate_*.py
+temp_*.py
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Assignment specific
+assignment_*.zip
+submission/
