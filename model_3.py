@@ -1,9 +1,3 @@
-# Targets:
-# Set up the environment and build a proper CNN skeleton with Conv + Pooling + FC.
-# Make the model lighter by reducing unnecessary parameters (aim <100k).
-# Ensure training runs smoothly, no implementation errors.
-# Achieve at least 98.5% test accuracy to establish a baseline.
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -84,15 +78,15 @@ class CNN_Model(nn.Module):
     def __init__(self):
         super(CNN_Model, self).__init__()                      # Input size: 3x32x32 (CIFAR-10)
 
-        # Conv Block 1 (Initial Conv) (3x32x32 → 32x32x32)
+        # Block 1: Initial Conv (3x32x32 → 32x32x32)
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(32)
         
         self.conv2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(32)
-        self.dropout1 = nn.Dropout(0.01)
+        self.dropout2 = nn.Dropout(0.01)
 
-        # Conv Block 2 (Depthwise Separable Conv) (32x32x32 → 16x16x64)    
+        # Block 2: Downsample + Dilated DW Sep Conv (32x32x32 → 16x16x96)    
         self.dwconv3 = nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1, groups=32, bias=False)
         self.dwbn3 = nn.BatchNorm2d(32)
         self.pwconv3 = nn.Conv2d(32, 64, kernel_size=1, stride=1, padding=0, bias=False)
@@ -105,7 +99,7 @@ class CNN_Model(nn.Module):
         self.bn4 = nn.BatchNorm2d(96)
         self.dropout4 = nn.Dropout(0.03)
 
-        # Conv Block 3 (Depthwise Diluted Conv) (16x16x64 → 16x16x128)
+        # Block 3: Dilated DW Sep Conv + Downsample (16x16x96 → 8x8x96)
         self.conv5 = nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn5 = nn.BatchNorm2d(64)
         
@@ -115,18 +109,19 @@ class CNN_Model(nn.Module):
         self.bn6 = nn.BatchNorm2d(96)
         self.dropout6 = nn.Dropout(0.05)
 
-        # Conv Block 4 (DilutedConv) (16x16x128 → 8x8x192)
         self.conv7 = nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn7 = nn.BatchNorm2d(64)
+        
         self.dwconv8 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, groups=64, bias=False)
         self.dwbn8 = nn.BatchNorm2d(64)
         self.pwconv8 = nn.Conv2d(64, 96, kernel_size=1, stride=1, bias=False)
         self.bn8 = nn.BatchNorm2d(96)
         self.dropout8 = nn.Dropout(0.05)
 
-        # (8x8x192 → 8x8x256)
+        # Block 4: DW Sep Conv + Feature Extraction (8x8x96 → 8x8x96)
         self.conv9 = nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn9 = nn.BatchNorm2d(64)
+        
         self.dwconv10 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, groups=64, bias=False)
         self.dwbn10 = nn.BatchNorm2d(64)
         self.pwconv10 = nn.Conv2d(64, 96, kernel_size=1, stride=1, bias=False)
@@ -135,32 +130,33 @@ class CNN_Model(nn.Module):
 
         self.conv11 = nn.Conv2d(96, 64, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn11 = nn.BatchNorm2d(64)
+        
         self.dwconv12 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, groups=64, bias=False)
         self.dwbn12 = nn.BatchNorm2d(64)
         self.pwconv12 = nn.Conv2d(64, 96, kernel_size=1, stride=1, bias=False)
         self.bn12 = nn.BatchNorm2d(96)
         self.dropout12 = nn.Dropout(0.07)
 
-        # GAP + FC
+        # Classifier: GAP + FC
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(96, 10)  # CIFAR-10 has 10 classes
 
     def forward(self, x):   
-        # Conv Block 1
+        # Block 1: Initial Conv (3x32x32 → 32x32x32)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
-        x = self.dropout1(x)
+        x = self.dropout2(x)
 
-        # Conv Block 2
+        # Block 2: Downsample + Dilated DW Sep Conv (32x32x32 → 16x16x96)
         x = F.relu(self.dwbn3(self.dwconv3(x)))
         x = F.relu(self.bn3(self.pwconv3(x)))
         x = self.dropout3(x)
 
-        # Conv Block 3
         x = F.relu(self.dwbn4(self.dwconv4(x)))
         x = F.relu(self.bn4(self.pwconv4(x)))
         x = self.dropout4(x)
 
+        # Block 3: Dilated DW Sep Conv + Downsample (16x16x96 → 8x8x96)
         x = F.relu(self.bn5(self.conv5(x)))
 
         x = F.relu(self.dwbn6(self.dwconv6(x)))
@@ -169,11 +165,11 @@ class CNN_Model(nn.Module):
 
         x = F.relu(self.bn7(self.conv7(x)))
 
-        # Conv Block 4
         x = F.relu(self.dwbn8(self.dwconv8(x)))
         x = F.relu(self.bn8(self.pwconv8(x)))
         x = self.dropout8(x)
 
+        # Block 4: DW Sep Conv + Feature Extraction (8x8x96 → 8x8x96)
         x = F.relu(self.bn9(self.conv9(x)))
 
         x = F.relu(self.dwbn10(self.dwconv10(x)))
@@ -186,7 +182,7 @@ class CNN_Model(nn.Module):
         x = F.relu(self.bn12(self.pwconv12(x)))
         x = self.dropout12(x)
 
-        # GAP + FC
+        # Classifier: GAP + FC
         x = self.gap(x)
         x = x.view(-1, 96)
         x = self.fc(x)

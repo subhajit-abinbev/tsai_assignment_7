@@ -73,13 +73,13 @@ def get_scheduler():
 
 def get_scheduler_params(steps_per_epoch, epochs=20):   
     return {
-        'max_lr': 0.12,
+        'max_lr': 0.015,
         'steps_per_epoch': steps_per_epoch,
         'epochs': epochs,
-        'pct_start': 0.15,           # % of cycle spent increasing LR
+        'pct_start': 0.20,           # % of cycle spent increasing LR
         'anneal_strategy': 'cos',   # cosine annealing
-        'div_factor': 10.0,         # initial_lr = max_lr/div_factor
-        'final_div_factor': 1e3     # minimum lr = max_lr/final_div_factor
+        'div_factor': 20.0,         # initial_lr = max_lr/div_factor
+        'final_div_factor': 1e4     # minimum lr = max_lr/final_div_factor
     }
 
 class CNN_Model(nn.Module):

@@ -20,7 +20,7 @@ print("Model Selection")
 print("="*50)
 print("Available models:")
 print("1. CNN_Model_1 - 2 million parameters, 60 epochs to reach >85% accuracy")
-print("2. CNN_Model_2 - 200k parameters, 70 epochs to reach >85% accuracy")
+print("2. CNN_Model_2 - 250k parameters, 70 epochs to reach >85% accuracy")
 print("3. CNN_Model_3 - 100k parameters, 75 epochs to reach >85% accuracy")
 
 while True:
