@@ -39,7 +39,7 @@ class AlbumentationsTransform:
         transformed = self.transform(image=image)
         return transformed['image']
 
-def data_loader(train_mean, train_std, batch_size_train=1024, batch_size_test=2048, train_transform=None, test_transform=None):
+def data_loader(train_mean, train_std, batch_size_train=256, batch_size_test=5000, train_transform=None, test_transform=None):
     # Handle Albumentations vs torchvision transforms
     if train_transform is not None:
         # If it's an Albumentations transform, wrap it
@@ -124,7 +124,11 @@ def train_model(model, device, trainloader, testloader, optimizer, criterion, ep
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
+
+            # ONLY step schedulers that require per-batch stepping
+            if scheduler is not None and isinstance(scheduler, (optim.lr_scheduler.OneCycleLR, optim.lr_scheduler.CyclicLR)):
+                scheduler.step()
+
             running_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
             total_train += labels.size(0)
@@ -148,9 +152,13 @@ def train_model(model, device, trainloader, testloader, optimizer, criterion, ep
             f'Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}% - '
             f'Test Loss: {test_loss:.4f}, Test Acc: {test_accuracy:.2f}%')
         
-        # Update scheduler if provided
+        # Step schedulers that require per-epoch stepping (AFTER the epoch)
         if scheduler is not None:
-            scheduler.step()
+            if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(test_loss)
+            elif not isinstance(scheduler, (optim.lr_scheduler.OneCycleLR, optim.lr_scheduler.CyclicLR)):
+                # CosineAnnealingLR, StepLR, etc. - step once per epoch
+                scheduler.step()
     
     return train_losses, train_accuracies, test_losses, test_accuracies
 
@@ -217,7 +225,7 @@ def get_cifar10_transforms():
     
     return train_transform, test_transform, mean, std
 
-def create_cifar10_loaders(batch_size_train=1024, batch_size_test=2048):
+def create_cifar10_loaders(batch_size_train=256, batch_size_test=5000):
     """
     Convenience function to create CIFAR-10 data loaders with Albumentations transforms
     Returns: (trainloader, testloader, mean, std)

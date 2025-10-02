@@ -19,9 +19,9 @@ print("\n" + "="*50)
 print("Model Selection")
 print("="*50)
 print("Available models:")
-print("1. CNN_Model_1 - Basic CNN Architecture")
-print("2. CNN_Model_2 - CNN with BatchNorm, Dropout and GAP")
-print("3. CNN_Model_3 - Optimized CNN additionally with proper pooling placement, data augmentation and tuned learning scheduler")
+print("1. CNN_Model_1 - 2 million parameters, 60 epochs to reach >85% accuracy")
+print("2. CNN_Model_2 - 200k parameters, 70 epochs to reach >85% accuracy")
+print("3. CNN_Model_3 - 100k parameters, 75 epochs to reach >85% accuracy")
 
 while True:
     try:
@@ -72,16 +72,20 @@ print("Model Summary:")
 summary(model, input_size=(3, 32, 32)) # Since input size for CIFAR-10 is 32x32 with 3 channels
 
 # Model Training
+epochs = int(input("\nSelect number of epochs for training (default 20): ") or 20)
 print(f"Starting training for {selected_model_name}...")
 
 # Initialize scheduler for model training
 scheduler = None
 scheduler_func = get_scheduler_func()
-scheduler_params = get_scheduler_params_func()
+if choice in ["2", "3"]:
+    scheduler_params = get_scheduler_params_func(len(train_loader), epochs=epochs)
+else:
+    scheduler_params = get_scheduler_params_func()
 scheduler = scheduler_func(optimizer, **scheduler_params)
 print("Scheduler initialized for model training.")
 
-epochs = int(input("\nSelect number of epochs for training (default 20): ") or 20)
+# Actual model training
 train_losses, train_accuracies, test_losses, test_accuracies = train_model(model, device, train_loader, test_loader, optimizer, 
                                                                            criterion, epochs=epochs, scheduler=scheduler)
 print("Training completed!")

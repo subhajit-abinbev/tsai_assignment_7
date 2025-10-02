@@ -22,20 +22,40 @@ def get_optimizer_params():
 
 # Data augmentation transform 
 def get_train_transform(mean, std):
+    """
+    Training augmentation as per assignment requirements:
+    - HorizontalFlip
+    - ShiftScaleRotate  
+    - CoarseDropout with exact specifications
+    """
+    # Convert to numpy if tensor
+    if hasattr(mean, 'cpu'):
+        mean = mean.cpu().numpy()
+    if hasattr(std, 'cpu'):
+        std = std.cpu().numpy()
+    
+    mean = np.array(mean)
+    std = np.array(std)
+    
     return A.Compose([
         A.HorizontalFlip(p=0.5),
-        A.Affine(
-            translate_percent=0.1,  # ±10% translation
-            scale=(0.9, 1.1),       # ±10% scaling
-            rotate=(-15, 15),       # ±15° rotation
+        
+        A.ShiftScaleRotate(
+            shift_limit=0.1,
+            scale_limit=0.1,
+            rotate_limit=15,
+            border_mode=0,
             p=0.5
         ),
+        
         A.CoarseDropout(
-            num_holes_range=(1, 1),    # Exactly 1 hole (min=1, max=1)
-            hole_height_range=(16, 16), # Exactly 16px height
-            hole_width_range=(16, 16),  # Exactly 16px width
+            num_holes_range=(1, 1),
+            hole_height_range=(16, 16),
+            hole_width_range=(16, 16),
+            fill=tuple((mean * 255).astype(int).tolist()),
             p=0.5
         ),
+        
         A.Normalize(mean=mean.tolist(), std=std.tolist()),
         ToTensorV2()
     ])
@@ -49,12 +69,17 @@ def get_test_transform(mean, std):
 
 # Scheduler configuration for model
 def get_scheduler():
-    return optim.lr_scheduler.CosineAnnealingLR  # Return the scheduler class
+    return optim.lr_scheduler.OneCycleLR  # Return the scheduler class
 
-def get_scheduler_params():
+def get_scheduler_params(steps_per_epoch, epochs=20):   
     return {
-        'T_max': 100,
-        'eta_min': 1e-5
+        'max_lr': 0.12,
+        'steps_per_epoch': steps_per_epoch,
+        'epochs': epochs,
+        'pct_start': 0.15,           # % of cycle spent increasing LR
+        'anneal_strategy': 'cos',   # cosine annealing
+        'div_factor': 10.0,         # initial_lr = max_lr/div_factor
+        'final_div_factor': 1e3     # minimum lr = max_lr/final_div_factor
     }
 
 class CNN_Model(nn.Module):
@@ -62,34 +87,46 @@ class CNN_Model(nn.Module):
         super(CNN_Model, self).__init__()                      # Input size: 3x32x32 (CIFAR-10)
 
         # Conv Block 1 (Normal Conv)
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.dropout1 = nn.Dropout(0.01)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(64)
+        self.dropout2 = nn.Dropout(0.01)
+        self.conv3 = nn.Conv2d(32, 48, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(48)
+        self.dropout3 = nn.Dropout(0.01)
 
         # Conv Block 2 (Depthwise Separable Conv)
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, groups=32, bias=False) # Depthwise
-        self.bn4 = nn.BatchNorm2d(64)
-        self.conv5 = nn.Conv2d(64, 64, kernel_size=1, stride=1, padding=0, bias=False) # Pointwise
-        self.bn5 = nn.BatchNorm2d(64)
-        self.conv6 = nn.Conv2d(64, 128, kernel_size=1, stride=2, padding=0, bias=False) # Pointwise with stride
-        self.bn6 = nn.BatchNorm2d(128)
+        self.conv4 = nn.Conv2d(48, 48, kernel_size=1, stride=1, padding=0, bias=False) # Pointwise
+        self.bn4 = nn.BatchNorm2d(48)
+        self.dropout4 = nn.Dropout(0.02)
+        self.conv5 = nn.Conv2d(48, 48, kernel_size=3, stride=1, padding=1, groups=48, bias=False) # Depthwise
+        self.bn5 = nn.BatchNorm2d(48)
+        self.dropout5 = nn.Dropout(0.02)
+        self.conv6 = nn.Conv2d(48, 96, kernel_size=1, stride=2, padding=0, bias=False) # Pointwise with stride
+        self.bn6 = nn.BatchNorm2d(96)
+        self.dropout6 = nn.Dropout(0.02)
 
         # Conv Block 3 (Diluted Conv)
-        self.conv7 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=2, dilation=2, bias=False)
-        self.bn7 = nn.BatchNorm2d(256)
+        self.conv7 = nn.Conv2d(96, 96, kernel_size=3, stride=1, padding=2, dilation=2, bias=False)
+        self.bn7 = nn.BatchNorm2d(96)
+        self.dropout7 = nn.Dropout(0.04)
+        # self.conv8 = nn.Conv2d(128, 128, kernel_size=1, stride=2, padding=0, bias=False)
+        # self.bn8 = nn.BatchNorm2d(128)
+        # self.dropout8 = nn.Dropout(0.04)
 
         # Conv Block 4 (Normal Conv)
-        self.conv8 = nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1, bias=False)
-        self.bn8 = nn.BatchNorm2d(256)
-        self.conv9 = nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn9 = nn.BatchNorm2d(512)
+        self.conv9 = nn.Conv2d(96, 128, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn9 = nn.BatchNorm2d(128)
+        self.dropout9 = nn.Dropout(0.05)
+        # self.conv10 = nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=False)
+        # self.bn10 = nn.BatchNorm2d(128)
+        # self.dropout10 = nn.Dropout(0.05)
 
         # GAP + FC
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512, 10)  # CIFAR-10 has 10 classes
+        self.fc = nn.Linear(128, 10)  # CIFAR-10 has 10 classes
 
     def forward(self, x):
         
@@ -107,12 +144,13 @@ class CNN_Model(nn.Module):
         x = F.relu(self.bn7(self.conv7(x)))
 
         # Conv Block 4
-        x = F.relu(self.bn8(self.conv8(x)))
+        # x = F.relu(self.bn8(self.conv8(x)))
         x = F.relu(self.bn9(self.conv9(x)))
+        # x = F.relu(self.bn10(self.conv10(x)))
 
         # GAP + FC
         x = self.gap(x)
-        x = x.view(-1, 512)  # Flatten the tensor
+        x = x.view(-1, 128)  # Flatten the tensor
         x = self.fc(x)
 
         return x
