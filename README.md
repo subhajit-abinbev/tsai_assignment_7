@@ -27,16 +27,16 @@ The project uses **Albumentations** library for sophisticated data augmentation:
 | **Parameter Target** | ~2M ✅ | <250K ✅ | <100K ✅ |
 | **Best Test Accuracy** | **87.29%** | **87.28%** | **86.38%** |
 | **Accuracy Target** | ≥85% ✅ | ≥85% ✅ | ≥85% ✅ |
-| **Training Epochs** | 100 | 100 | 75 |
+| **Training Epochs** | 100 | 100 | 100 |
 | **Epoch Target** | ≤60 ✅ | ≤70 ✅ | ≤75 ✅ |
 | **Target Achievement** | Epoch 49 ⭐ | Epoch 61 | Epoch 66 |
 | **Final Test Accuracy** | **87.26%** | **87.04%** | **86.38%** |
 | **Optimizer** | AdamW | AdamW | AdamW |
-| **Learning Rate** | Dynamic | Dynamic | Dynamic |
+| **Learning Rate** | 0.01 | 0.01 | 0.015 |
 | **Data Augmentation** | Albumentations | Albumentations | Albumentations |
-| **Scheduler** | StepLR ✅ | StepLR ✅ | StepLR ✅ |
+| **Scheduler** | CosineAnnealingLR ✅ | OneCycleLR ✅ | CosineAnnealingLR ✅ |
 | **Regularization** | BatchNorm + Dropout | BatchNorm + Dropout | BatchNorm + Dropout |
-| **Architecture Features** | Standard CNN + GAP | Optimized CNN + GAP | Depthwise + Dilation + GAP ⭐ |
+| **Architecture Features** | Standard CNN + GAP | Depthwise + Dilation + GAP | **1×1 Channel Reduction + Depthwise + Dilation + GAP** ⭐ |
 | **Training Loss** | 0.1946 | 0.3195 | 0.3832 |
 | **Test Loss** | 0.4862 | 0.4007 | 0.4417 |
 | **Overfitting Gap** | High (5.89%) | Medium (1.82%) | Low (0.06%) ⭐ |
